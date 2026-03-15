@@ -1,0 +1,110 @@
+name: pai_smart
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Hyj88535966.
+      MYSQL_DATABASE: PaiSmart
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    container_name: minio
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: always
+    ports:
+      - "19000:19000"
+      - "19001:19001"
+    volumes:
+      - minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":19001" --address ":19000"
+
+  redis:
+    image: redis
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --requirepass Hyj88535966. --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "Hyj88535966.", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: bitnamilegacy/kafka:latest
+    container_name: kafka
+    restart: always
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+
+      - KAFKA_CFG_LISTENERS=CONTROLLER://:9093,PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 # 改动 kafka -> localhost
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+    volumes:
+      - kafka-data:/bitnami/kafka
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  es:
+    build:
+      context: .
+      dockerfile: Dockerfile.es
+    image: es-ik:8.10.4
+    container_name: es
+    restart: always
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    environment:
+      - ELASTIC_PASSWORD=Hyj88535966.
+      - node.name=pai-smart-es01
+      - discovery.type=single-node
+      - xpack.license.self_generated.type=basic
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    healthcheck:
+      test: [ "CMD", "curl", "-u", "elastic:Hyj88535966.", "-s", "http://localhost:9200" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+volumes:
+  redis-data:
+  mysql-data:
+  minio-data:
+  kafka-data:
+  es-data:
